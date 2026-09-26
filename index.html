@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ECHO SHIFT — Time-Loop Puzzle Game</title>
+  <meta name="description" content="A browser-based time-loop puzzle game where you coordinate with translucent echoes of your past runs to solve multi-switch pressure plate puzzles.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #090a10;
+      --panel-bg: rgba(18, 20, 32, 0.75);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --accent-cyan: #00f3ff;
+      --accent-purple: #a855f7;
+      --accent-blue: #3b82f6;
+      --accent-gold: #fbbf24;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      padding: 12px;
+      position: relative;
+    }
+
+    /* Ambient Background Glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: -10%;
+      width: 60vw;
+      height: 60vw;
+      background: radial-gradient(circle, rgba(0, 243, 255, 0.08) 0%, rgba(0,0,0,0) 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: -20%;
+      right: -10%;
+      width: 60vw;
+      height: 60vw;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, rgba(0,0,0,0) 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* App Container */
+    .app-container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 1;
+    }
+
+    /* Header Bar */
+    header {
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      color: #000;
+      font-size: 1.2rem;
+      box-shadow: 0 0 16px rgba(0, 243, 255, 0.4);
+    }
+
+    .brand-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      background: linear-gradient(90deg, #fff, var(--text-muted));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .level-select-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .level-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .level-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--accent-cyan);
+    }
+
+    .level-btn.active {
+      background: var(--accent-cyan);
+      color: #000;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(0, 243, 255, 0.4);
+    }
+
+    .controls-top {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Info Bar */
+    .info-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.3rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      color: #fff;
+    }
+
+    .stat-value.cyan { color: var(--accent-cyan); }
+    .stat-value.purple { color: var(--accent-purple); }
+    .stat-value.gold { color: var(--accent-gold); }
+
+    /* Main Game Viewport */
+    .game-area {
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      min-height: 420px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    canvas {
+      background: #0d0f18;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 243, 255, 0.05);
+      max-width: 100%;
+      height: auto;
+      touch-action: none;
+    }
+
+    /* Progress & Tick Bar */
+    .tick-container {
+      width: 100%;
+      max-width: 600px;
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tick-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    .tick-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .tick-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+      transition: width 0.1s linear;
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+
+    /* Touch Controls & Action Buttons */
+    .controls-panel {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .action-btns {
+      display: flex;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .btn {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(0, 243, 255, 0.2), rgba(168, 85, 247, 0.2));
+      border-color: var(--accent-cyan);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(0, 243, 255, 0.15);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, rgba(0, 243, 255, 0.35), rgba(168, 85, 247, 0.35));
+      border-color: #fff;
+      box-shadow: 0 6px 20px rgba(0, 243, 255, 0.3);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
+      border-color: var(--accent-red);
+    }
+
+    /* On-Screen D-Pad */
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(3, 44px);
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .dpad-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+
+    .dpad-btn:active {
+      background: var(--accent-cyan);
+      color: #000;
+      transform: scale(0.92);
+    }
+
+    .dpad-up { grid-column: 2; grid-row: 1; }
+    .dpad-left { grid-column: 1; grid-row: 2; }
+    .dpad-center { grid-column: 2; grid-row: 2; background: transparent; border: none; cursor: default; }
+    .dpad-right { grid-column: 3; grid-row: 2; }
+    .dpad-down { grid-column: 2; grid-row: 3; }
+
+    /* Modals & Overlays */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(9, 10, 16, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: #141724;
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      transform: translateY(20px) scale(0.95);
+      transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .modal-overlay.active .modal-card {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-title {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .modal-subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .stars {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      font-size: 2.2rem;
+      color: var(--accent-gold);
+    }
+
+    /* Footer & Guide */
+    footer {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+      .controls-panel {
+        flex-direction: column-reverse;
+        align-items: center;
+      }
+      .action-btns {
+        width: 100%;
+      }
+      .brand-title {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">↻</div>
+        <div class="brand-title">ECHO SHIFT</div>
+      </div>
+
+      <div class="level-select-container">
+        <button class="level-btn active" onclick="selectLevel(0)">L1</button>
+        <button class="level-btn" onclick="selectLevel(1)">L2</button>
+        <button class="level-btn" onclick="selectLevel(2)">L3</button>
+        <button class="level-btn" onclick="selectLevel(3)">L4</button>
+        <button class="level-btn" onclick="selectLevel(4)">L5</button>
+      </div>
+
+      <div class="controls-top">
+        <button class="icon-btn" id="audioToggle" onclick="toggleAudio()" title="Toggle Mute">🔊</button>
+        <button class="icon-btn" onclick="openModal('helpModal')" title="How to Play">❓</button>
+      </div>
+    </header>
+
+    <!-- Stat Bar -->
+    <div class="info-bar">
+      <div class="stat-card">
+        <span class="stat-label">Current Level</span>
+        <span class="stat-value cyan" id="lvlName">1 — First Steps</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Loop Count</span>
+        <span class="stat-value purple" id="loopNum">1</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Active Echoes</span>
+        <span class="stat-value cyan" id="echoCount">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Best Record</span>
+        <span class="stat-value gold" id="bestScore">--</span>
+      </div>
+    </div>
+
+    <!-- Canvas Game Area -->
+    <div class="game-area">
+      <canvas id="gameCanvas" width="560" height="420"></canvas>
+
+      <div class="tick-container">
+        <div class="tick-info">
+          <span>TICK LOOP</span>
+          <span id="tickCounter">0 / 120</span>
+        </div>
+        <div class="tick-track">
+          <div class="tick-fill" id="tickProgress"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls & Actions -->
+    <div class="controls-panel">
+      <div class="action-btns">
+        <button class="btn btn-primary" onclick="endLoopEarly()">
+          <span>↻</span> End Loop early (L)
+        </button>
+        <button class="btn btn-danger" onclick="restartLevel()">
+          <span>↺</span> Restart Level (R)
+        </button>
+      </div>
+
+      <!-- Touch D-Pad -->
+      <div class="dpad">
+        <button class="dpad-btn dpad-up" onmousedown="triggerInput('U')" ontouchstart="triggerInput('U'); event.preventDefault();">▲</button>
+        <button class="dpad-btn dpad-left" onmousedown="triggerInput('L')" ontouchstart="triggerInput('L'); event.preventDefault();">◀</button>
+        <div class="dpad-center"></div>
+        <button class="dpad-btn dpad-right" onmousedown="triggerInput('R')" ontouchstart="triggerInput('R'); event.preventDefault();">▶</button>
+        <button class="dpad-btn dpad-down" onmousedown="triggerInput('D')" ontouchstart="triggerInput('D'); event.preventDefault();">▼</button>
+      </div>
+    </div>
+
+    <footer>
+      <span>ECHO SHIFT • Built for EVOX 1.0</span>
+      <span>•</span>
+      <a href="https://github.com/priyanshu-sarjan/PS-G-Games-.git" target="_blank">GitHub Repository</a>
+    </footer>
+  </div>
+
+  <!-- Help Modal -->
+  <div class="modal-overlay" id="helpModal">
+    <div class="modal-card">
+      <h2 class="modal-title">How to Play</h2>
+      <div class="modal-subtitle">
+        <p style="margin-bottom:12px">You control one player. When a loop ends, your movement is saved as a <b>translucent ECHO</b> that replays your exact actions forever.</p>
+        <p style="margin-bottom:12px"><b>Goal:</b> Reach the green Exit portal. Some doors require multiple pressure plates held down simultaneously — something one body cannot do alone!</p>
+        <p><b>Controls:</b> Arrow Keys / WASD to move. Press <b>L</b> to finish loop early. Press <b>R</b> to restart level.</p>
+      </div>
+      <button class="btn btn-primary" onclick="closeModal('helpModal')">Got it!</button>
+    </div>
+  </div>
+
+  <!-- Win Modal -->
+  <div class="modal-overlay" id="winModal">
+    <div class="modal-card">
+      <div class="stars">★★★</div>
+      <h2 class="modal-title" style="color:var(--accent-cyan)">LEVEL CLEARED!</h2>
+      <p class="modal-subtitle" id="winDetails">You solved the level in 2 loops with 1 echo!</p>
+      <div style="display:flex; gap:12px">
+        <button class="btn" onclick="restartLevel(); closeModal('winModal');">Replay</button>
+        <button class="btn btn-primary" onclick="nextLevel(); closeModal('winModal');">Next Level →</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // ECHO SHIFT — CORE GAME ENGINE
+    // ==========================================
+
+    const LEVELS = [
+      {
+        name: "Level 1: First Steps",
+        cols: 7, rows: 5,
+        grid: [
+          "#######",
+          "#S.P1.#",
+          "#####.#",
+          "#E.D1.#",
+          "#######"
+        ],
+        doors: { D1: { requires: ["P1"], pos: { r: 3, c: 3 } } },
+        plates: { P1: { r: 1, c: 3 } },
+        start: { r: 1, c: 1 }, exit: { r: 3, c: 1 }
+      },
+      {
+        name: "Level 2: Two Hands",
+        cols: 7, rows: 5,
+        grid: [
+          "#######",
+          "#S.P1.#",
+          "#.###.#",
+          "#.P2D1E",
+          "#######"
+        ],
+        doors: { D1: { requires: ["P1", "P2"], pos: { r: 3, c: 4 } } },
+        plates: { P1: { r: 1, c: 3 }, P2: { r: 3, c: 2 } },
+        start: { r: 1, c: 1 }, exit: { r: 3, c: 5 }
+      },
+      {
+        name: "Level 3: Triangulation",
+        cols: 9, rows: 7,
+        grid: [
+          "#########",
+          "#S...P1.#",
+          "#.#####.#",
+          "#.P2.D1E#",
+          "#.#####.#",
+          "#....P3.#",
+          "#########"
+        ],
+        doors: { D1: { requires: ["P1", "P2", "P3"], pos: { r: 3, c: 6 } } },
+        plates: { P1: { r: 1, c: 5 }, P2: { r: 3, c: 2 }, P3: { r: 5, c: 5 } },
+        start: { r: 1, c: 1 }, exit: { r: 3, c: 7 }
+      },
+      {
+        name: "Level 4: Branch Point",
+        cols: 9, rows: 7,
+        grid: [
+          "#########",
+          "#P1..P2.#",
+          "#.#####.#",
+          "#S..D1.E#",
+          "#.#####.#",
+          "#P3..P4.#",
+          "#########"
+        ],
+        doors: { D1: { requires: ["P1", "P2", "P3", "P4"], pos: { r: 3, c: 5 } } },
+        plates: { P1: { r: 1, c: 1 }, P2: { r: 1, c: 5 }, P3: { r: 5, c: 1 }, P4: { r: 5, c: 5 } },
+        start: { r: 3, c: 1 }, exit: { r: 3, c: 7 }
+      },
+      {
+        name: "Level 5: Temporal Relay",
+        cols: 9, rows: 7,
+        grid: [
+          "#########",
+          "#P1.D1.P3",
+          "#.#####.#",
+          "#S.....E#",
+          "#.#####.#",
+          "#P2.D2.P4",
+          "#########"
+        ],
+        doors: {
+          D1: { requires: ["P1", "P2"], pos: { r: 1, c: 3 } },
+          D2: { requires: ["P3", "P4"], pos: { r: 5, c: 3 } }
+        },
+        plates: {
+          P1: { r: 1, c: 1 }, P2: { r: 5, c: 1 },
+          P3: { r: 1, c: 6 }, P4: { r: 5, c: 6 }
+        },
+        start: { r: 3, c: 1 }, exit: { r: 3, c: 7 }
+      }
+    ];
+
+    const MAX_TICKS = 120;
+    const TICK_INTERVAL_MS = 250; // 4 ticks per sec
+
+    let currentLevelIdx = 0;
+    let currentLevel = LEVELS[0];
+    let loopNumber = 1;
+    let tickCount = 0;
+    let echoes = []; // array of array of direction strings
+    let currentRecording = [];
+    let openDoors = new Set();
+
+    let playerPos = { r: 0, c: 0 };
+    let playerDisplayPos = { r: 0, c: 0 };
+    let echoPositions = [];
+    let echoDisplayPositions = [];
+
+    let isAudioMuted = false;
+    let audioCtx = null;
+    let tickTimer = null;
+    let animFrame = null;
+    let gameWon = false;
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Initialize Game
+    function init() {
+      selectLevel(0);
+      setupEventListeners();
+      requestAnimationFrame(renderLoop);
+    }
+
+    function setupEventListeners() {
+      window.addEventListener('keydown', (e) => {
+        if (gameWon) return;
+        const key = e.key.toUpperCase();
+        if (key === 'ARROWUP' || key === 'W') triggerInput('U');
+        else if (key === 'ARROWDOWN' || key === 'S') triggerInput('D');
+        else if (key === 'ARROWLEFT' || key === 'A') triggerInput('L');
+        else if (key === 'ARROWRIGHT' || key === 'D') triggerInput('R');
+        else if (key === 'L') endLoopEarly();
+        else if (key === 'R') restartLevel();
+      });
+    }
+
+    function selectLevel(idx) {
+      currentLevelIdx = idx;
+      currentLevel = LEVELS[idx];
+      document.querySelectorAll('.level-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === idx);
+      });
+      restartLevel();
+    }
+
+    function restartLevel() {
+      loopNumber = 1;
+      echoes = [];
+      gameWon = false;
+      updateBestScoreDisplay();
+      startLoop();
+    }
+
+    function startLoop() {
+      tickCount = 0;
+      currentRecording = [];
+      openDoors.clear();
+      playerPos = { ...currentLevel.start };
+      playerDisplayPos = { ...currentLevel.start };
+      echoPositions = echoes.map(() => ({ ...currentLevel.start }));
+      echoDisplayPositions = echoes.map(() => ({ ...currentLevel.start }));
+
+      updateUI();
+      if (tickTimer) clearInterval(tickTimer);
+      tickTimer = setInterval(tick, TICK_INTERVAL_MS);
+    }
+
+    function triggerInput(dir) {
+      if (gameWon) return;
+      initAudio();
+      
+      const nextP = getNextPos(playerPos, dir);
+      if (isPassable(nextP.r, nextP.c)) {
+        playerPos = nextP;
+        playSound('step');
+      }
+    }
+
+    function isPassable(r, c) {
+      if (r < 0 || r >= currentLevel.rows || c < 0 || c >= currentLevel.cols) return false;
+      const char = currentLevel.grid[r][c];
+      if (char === '#') return false;
+
+      // Check door
+      for (const [doorId, door] of Object.entries(currentLevel.doors)) {
+        if (door.pos.r === r && door.pos.c === c) {
+          if (!openDoors.has(doorId)) return false;
+        }
+      }
+      return true;
+    }
+
+    function getNextPos(pos, dir) {
+      if (dir === 'U') return { r: pos.r - 1, c: pos.c };
+      if (dir === 'D') return { r: pos.r + 1, c: pos.c };
+      if (dir === 'L') return { r: pos.r, c: pos.r - 1 };
+      if (dir === 'R') return { r: pos.r, c: pos.r + 1 };
+      return { r: pos.r, c: pos.c };
+    }
+
+    // Single Tick Execution
+    function tick() {
+      if (gameWon) return;
+      if (tickCount >= MAX_TICKS) {
+        endLoopEarly();
+        return;
+      }
+
+      // Record player state
+      currentRecording.push({ r: playerPos.r, c: playerPos.c });
+
+      // Move Echoes
+      for (let i = 0; i < echoes.length; i++) {
+        const rec = echoes[i];
+        if (tickCount < rec.length) {
+          echoPositions[i] = { ...rec[tickCount] };
+        } else {
+          // Stay at last position
+          echoPositions[i] = { ...rec[rec.length - 1] };
+        }
+      }
+
+      // Evaluate Pressure Plates
+      const activePlates = new Set();
+      const allEntities = [playerPos, ...echoPositions];
+
+      for (const [plateId, platePos] of Object.entries(currentLevel.plates)) {
+        for (const ent of allEntities) {
+          if (ent.r === platePos.r && ent.c === platePos.c) {
+            activePlates.add(plateId);
+            break;
+          }
+        }
+      }
+
+      // Evaluate Doors
+      let doorOpenedNew = false;
+      for (const [doorId, door] of Object.entries(currentLevel.doors)) {
+        if (!openDoors.has(doorId)) {
+          const reqMet = door.requires.every(p => activePlates.has(p));
+          if (reqMet) {
+            openDoors.add(doorId);
+            doorOpenedNew = true;
+          }
+        }
+      }
+      if (doorOpenedNew) playSound('door');
+
+      // Check Exit
+      if (playerPos.r === currentLevel.exit.r && playerPos.c === currentLevel.exit.c) {
+        handleWin();
+        return;
+      }
+
+      tickCount++;
+      updateUI();
+    }
+
+    function endLoopEarly() {
+      if (gameWon) return;
+      playSound('loop');
+      echoes.push([...currentRecording]);
+      loopNumber++;
+      startLoop();
+    }
+
+    function handleWin() {
+      gameWon = true;
+      clearInterval(tickTimer);
+      playSound('win');
+
+      // Save Best Score
+      const key = `echoshift_best_lvl_${currentLevelIdx}`;
+      const prevBest = localStorage.getItem(key);
+      if (!prevBest || loopNumber < parseInt(prevBest)) {
+        localStorage.setItem(key, loopNumber);
+      }
+      updateBestScoreDisplay();
+
+      document.getElementById('winDetails').innerText = 
+        `You solved ${currentLevel.name} in ${loopNumber} loop${loopNumber > 1 ? 's' : ''} with ${echoes.length} echo${echoes.length !== 1 ? 'es' : ''}!`;
+      openModal('winModal');
+    }
+
+    function nextLevel() {
+      if (currentLevelIdx < LEVELS.length - 1) {
+        selectLevel(currentLevelIdx + 1);
+      } else {
+        selectLevel(0);
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('lvlName').innerText = currentLevel.name;
+      document.getElementById('loopNum').innerText = loopNumber;
+      document.getElementById('echoCount').innerText = echoes.length;
+      document.getElementById('tickCounter').innerText = `${tickCount} / ${MAX_TICKS}`;
+      document.getElementById('tickProgress').style.width = `${(tickCount / MAX_TICKS) * 100}%`;
+    }
+
+    function updateBestScoreDisplay() {
+      const key = `echoshift_best_lvl_${currentLevelIdx}`;
+      const prevBest = localStorage.getItem(key);
+      document.getElementById('bestScore').innerText = prevBest ? `${prevBest} Loops` : '--';
+    }
+
+    // ==========================================
+    // CANVAS RENDERER
+    // ==========================================
+
+    function renderLoop() {
+      // Smooth display interpolation
+      const lerpSpeed = 0.35;
+      playerDisplayPos.r += (playerPos.r - playerDisplayPos.r) * lerpSpeed;
+      playerDisplayPos.c += (playerPos.c - playerDisplayPos.c) * lerpSpeed;
+
+      for (let i = 0; i < echoPositions.length; i++) {
+        if (!echoDisplayPositions[i]) echoDisplayPositions[i] = { ...echoPositions[i] };
+        echoDisplayPositions[i].r += (echoPositions[i].r - echoDisplayPositions[i].r) * lerpSpeed;
+        echoDisplayPositions[i].c += (echoPositions[i].c - echoDisplayPositions[i].c) * lerpSpeed;
+      }
+
+      drawCanvas();
+      animFrame = requestAnimationFrame(renderLoop);
+    }
+
+    function drawCanvas() {
+      const cols = currentLevel.cols;
+      const rows = currentLevel.rows;
+      const tileSize = Math.min(Math.floor(canvas.width / cols), Math.floor(canvas.height / rows));
+
+      const offsetX = Math.floor((canvas.width - cols * tileSize) / 2);
+      const offsetY = Math.floor((canvas.height - rows * tileSize) / 2);
+
+      // Clear Canvas
+      ctx.fillStyle = '#0d0f18';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Grid Tiles
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x = offsetX + c * tileSize;
+          const y = offsetY + r * tileSize;
+          const char = currentLevel.grid[r][c];
+
+          if (char === '#') {
+            // Wall
+            ctx.fillStyle = '#1e2238';
+            ctx.fillRect(x, y, tileSize, tileSize);
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.strokeRect(x, y, tileSize, tileSize);
+          } else {
+            // Floor
+            ctx.fillStyle = '#121524';
+            ctx.fillRect(x, y, tileSize, tileSize);
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.strokeRect(x, y, tileSize, tileSize);
+          }
+        }
+      }
+
+      // Draw Start
+      const sx = offsetX + currentLevel.start.c * tileSize;
+      const sy = offsetY + currentLevel.start.r * tileSize;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.fillRect(sx + 4, sy + 4, tileSize - 8, tileSize - 8);
+
+      // Draw Pressure Plates
+      for (const [plateId, pos] of Object.entries(currentLevel.plates)) {
+        const px = offsetX + pos.c * tileSize;
+        const py = offsetY + pos.r * tileSize;
+
+        let isPressed = (playerPos.r === pos.r && playerPos.c === pos.c);
+        if (!isPressed) {
+          isPressed = echoPositions.some(p => p.r === pos.r && p.c === pos.c);
+        }
+
+        ctx.fillStyle = isPressed ? '#fbbf24' : 'rgba(251, 191, 36, 0.2)';
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(px + 8, py + 8, tileSize - 16, tileSize - 16, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isPressed ? '#000' : '#fbbf24';
+        ctx.font = `600 ${Math.floor(tileSize * 0.3)}px Outfit`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(plateId, px + tileSize / 2, py + tileSize / 2);
+      }
+
+      // Draw Doors
+      for (const [doorId, door] of Object.entries(currentLevel.doors)) {
+        const dx = offsetX + door.pos.c * tileSize;
+        const dy = offsetY + door.pos.r * tileSize;
+        const isOpen = openDoors.has(doorId);
+
+        if (isOpen) {
+          ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(dx + 4, dy + 4, tileSize - 8, tileSize - 8);
+        } else {
+          ctx.fillStyle = '#ef4444';
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = 8;
+          ctx.fillRect(dx + 4, dy + 4, tileSize - 8, tileSize - 8);
+          ctx.shadowBlur = 0;
+
+          ctx.fillStyle = '#fff';
+          ctx.font = `700 ${Math.floor(tileSize * 0.3)}px Outfit`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(doorId, dx + tileSize / 2, dy + tileSize / 2);
+        }
+      }
+
+      // Draw Exit Portal
+      const ex = offsetX + currentLevel.exit.c * tileSize;
+      const ey = offsetY + currentLevel.exit.r * tileSize;
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#10b981';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(ex + tileSize / 2, ey + tileSize / 2, tileSize * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Draw Echoes (Past Selves)
+      echoDisplayPositions.forEach((pos, idx) => {
+        const epx = offsetX + pos.c * tileSize;
+        const epy = offsetY + pos.r * tileSize;
+
+        ctx.fillStyle = 'rgba(168, 85, 247, 0.6)';
+        ctx.strokeStyle = '#a855f7';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#a855f7';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(epx + tileSize / 2, epy + tileSize / 2, tileSize * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = '#fff';
+        ctx.font = `600 ${Math.floor(tileSize * 0.25)}px Outfit`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`E${idx + 1}`, epx + tileSize / 2, epy + tileSize / 2);
+      });
+
+      // Draw Live Player
+      const ppx = offsetX + playerDisplayPos.c * tileSize;
+      const ppy = offsetY + playerDisplayPos.r * tileSize;
+
+      ctx.fillStyle = '#00f3ff';
+      ctx.shadowColor = '#00f3ff';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.arc(ppx + tileSize / 2, ppy + tileSize / 2, tileSize * 0.32, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // ==========================================
+    // WEB AUDIO SYNTHESIS
+    // ==========================================
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function toggleAudio() {
+      isAudioMuted = !isAudioMuted;
+      document.getElementById('audioToggle').innerText = isAudioMuted ? '🔇' : '🔊';
+    }
+
+    function playSound(type) {
+      if (isAudioMuted) return;
+      initAudio();
+      if (!audioCtx) return;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'step') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(150, now + 0.05);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.05);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } else if (type === 'door') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.2);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      } else if (type === 'loop') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (type === 'win') {
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          const o = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          o.connect(g);
+          g.connect(audioCtx.destination);
+          o.type = 'sine';
+          o.frequency.setValueAtTime(freq, now + idx * 0.08);
+          g.gain.setValueAtTime(0.15, now + idx * 0.08);
+          g.gain.linearRampToValueAtTime(0, now + idx * 0.08 + 0.2);
+          o.start(now + idx * 0.08);
+          o.stop(now + idx * 0.08 + 0.2);
+        });
+      }
+    }
+
+    // Modal Helpers
+    function openModal(id) {
+      document.getElementById(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    // Start App
+    window.onload = init;
+  </script>
+</body>
+</html>

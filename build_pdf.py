@@ -20,7 +20,7 @@ quote = ParagraphStyle('Quote', parent=body, leftIndent=14, textColor=colors.Hex
 mono = ParagraphStyle('Mono', parent=body, fontName='Courier', fontSize=9, leading=13, backColor=colors.HexColor('#f4f4f8'))
 label = ParagraphStyle('Label', parent=body, fontSize=8.5, textColor=colors.HexColor('#888'), spaceAfter=2)
 
-doc = SimpleDocTemplate("/home/claude/echo-shift/SUBMISSION.pdf", pagesize=LETTER,
+doc = SimpleDocTemplate("SUBMISSION.pdf", pagesize=LETTER,
                          topMargin=0.9*inch, bottomMargin=0.8*inch,
                          leftMargin=0.9*inch, rightMargin=0.9*inch,
                          title="ECHO SHIFT — EVOX 1.0 Submission", author="Team submission — EVOX 1.0")
